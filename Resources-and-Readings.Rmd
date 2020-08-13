@@ -1,0 +1,28 @@
+---
+title: "Resources-and-Readings"
+author: "aaron mamula"
+date: "8/13/2020"
+output: html_document
+---
+
+## Resources
+
+### Math-y Things on Naive Bayes
+
+[Hastie, Tibshirani, and Friedman. Elements of Statistical Learning](https://web.stanford.edu/~hastie/Papers/ESLII.pdf), Section 6.6.3.
+
+[Sebastian Raschka's tutorial](https://sebastianraschka.com/Articles/2014_naive_bayes_1.html)
+
+### More General Sentiment Analysis Stuff
+
+[A very nice Python-based tutorial on sentiment analysis](http://www.laurentluce.com/posts/twitter-sentiment-analysis-using-python-and-nltk/). 
+
+[Bradley Boehmke](http://uc-r.github.io/creating-text-features) has some cool R tutorials on text mining operations.
+
+Another [Bradley Boehmke](https://uc-r.github.io/tidy_text) tutorial on ```tidy text```.
+
+[Some Kaggle Kernels](https://www.kaggle.com/marklvl/sentiment-classification-using-naive-bayes)
+
+[An R-based Vignette on Naive Bayes for Text Classification](https://rpubs.com/riazakhan94/naive_bayes_classifier_e1071)
+
+[A guide to working with Twitter data in R](https://uvastatlab.github.io/2019/05/03/an-introduction-to-analyzing-twitter-data-with-r/)

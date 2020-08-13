@@ -1,0 +1,207 @@
+---
+title: "Sentiment-Analysis-Example"
+author: "aaron mamula"
+date: "8/13/2020"
+output: html_document
+---
+
+# {.tabset .tabset-fade .tabset-pills}
+
+## Executive Summary
+
+This markdown doc shows a simple example of using the Naive Bayes classification algorithm to predict whether a tweet is "positive", "negative", or "neutral". I use a dataset from Kaggle on tweets made during the 2016 GOP debate in Ohio. I also use the text mining package ```tm``` to organize tweets into a dictionary of words/terms. That dictionary of terms is then split into a training sets and testing sets and the training set is used to estimate a Naive Bayes classification model.  
+
+## Packages and Data
+
+Load a bunch of libraries for the remainder of the module. 
+
+```{r, warning=F}
+library(rtweet) # for harvesting tweets
+library(tm) # for text mining
+library(dplyr) 
+library(tidyr)
+library(data.table)
+library(ggplot2)
+library(ggthemes)
+library(e1071) # has the naiveBayes algorithm
+library(caret) # good ML package, I like the confusionMatrix() function
+library(here)
+```
+
+Load the data:
+
+```{r}
+tweets <- read.csv(here('data/Sentiment.csv'))
+
+```
+
+The data come from Kaggle and are available here: [Sentiment Analysis Dataset from Kaggle](https://www.kaggle.com/crowdflower/first-gop-debate-twitter-sentiment?select=Sentiment.csv. These are tweets collected during a GOP Debate in Ohio for the 2016 Presidential nomination).
+
+One important thing to note is that these tweets have already been classified as "Postive", "Negative", or "Neutral". So, in the jargon of machine learning, this is a supervised learning process.
+
+
+## A Text Classification Example {.tabset}
+
+### Intro & Background
+
+In this example I'm going to attempt to illustrate the multinomial Naive Bayes classifier using some text data. The data are tweets sents during the 2016 GOP Primary Debate in Ohio. Each tweet has been classified by hand as "positive", "neutral", or "negative". The goal of this example is to use this supervised data to estimate a predictive model. 
+
+That is, we want to construct a model capable of classifying a tweet as "postive", "negative", or "neutral" based on the content of the tweet.
+
+I can think of a number of reasons why this sort of thing would be cool. One reason I'll propose is the following:
+
+Suppose were're interested in the question, "who won last night's debate?"
+
+One possibility for addressing this question is to gauge who got the most favorable reaction from the twitter-sphere (sure there are lots of problem/caveats with such an approach but conceptually it's decent). And being able to classify a tweet as "positive","negative", or "neutral" would be pretty instrumental to this end. 
+
+The step-by-step for this exercise is something like this:
+
+1. get the pre-classified twitter data
+2. do some preliminary cleaning of the text
+3. use the ```tm``` package to massage the text data into a nice format
+4. split the data into 'training' and 'testing' sets
+4. use the 'one hot encoding' approach to define the 'features' of a classification model
+5. apply the Naive Bayes algorithm from the ```e1071``` package to the 'training' data
+6. use the model to predict sentiment from the 'testing' data
+
+
+### Data Cleaning
+
+The first thing I'm going to do coerce the 'sentiment' field to be a factor rather than a string value.
+
+```{r}
+
+# first I'm going to remove "neutral" tweets to make the example more convincing
+#tweets <- tweets %>% filter(sentiment!="Neutral")
+
+# we are going to need the target variable to be categorical
+tweets <- tweets %>% mutate(sentiment=factor(sentiment))
+
+head(tweets)
+
+```
+
+
+This second step is a little hacky. I've experiements with both the ```tidyr``` and ```tm``` packages for working with text mining applications. They both have cool features built-in the clean regular expressions and other complicating things from text data. For some reason, I've had persistent problems with some special characters (like non-ASCII or escape characters). Here I use a simple ```gsub()``` operation to clean a bunch of stuff out of the tweet text.
+
+```{r}
+tweets$text <- gsub("[^[:alnum:][:blank:]?&/\\-]", "", tweets$text)
+```
+
+
+The "Bag of Words" model will treat each tweet as, well, a big bag of words. Using the ```tm``` package to organize our tweets, one of the first things we do is create a Corpus. A Corpus is a document collection. In this case, each tweet is a document. 
+
+```{r}
+corpus <- Corpus(VectorSource(tweets$text))
+corpus
+```
+
+Now we have a Corpus with 13,871 documents (tweets). 
+
+The ```tm``` package has some built-in methods to remove things like punctuation and stop words. I'll use these to remove some stuff from the Corpus:
+
+```{r}
+clean.corpus <- corpus %>% tm_map(tolower) %>%
+                   tm_map(removeNumbers) %>%
+                       tm_map(removeWords, stopwords()) %>%
+                          tm_map(removePunctuation) %>%
+                           tm_map(stripWhitespace)
+
+inspect(clean.corpus[1:5])
+```
+
+### Document Matricies
+
+In this next part there are a couple things to keep straight:
+
+1. There is a TermDocumentMatrix which orients the terms in the corpus along the rows with documents in the corpus along the columns.
+
+2. Then there is a DocumentTermMatrix which orients the documents along the rows and terms along the columns.
+
+This application is primarily concerned with the DocumentTermMatrix. This is because when applying the Naive Bayes algorithm, it's convenient to have observations (tweets) in the rows and features (words) across the columns.
+
+```{r}
+# list of text preparation steps to be applied
+# note that we can used individual tm_map() functions above to remove punctuation and numbers...but we can
+#    also use this "control" option inside of the term-document-matrix call to remove stopwords, 
+#     punctuation, and numbers. My experience was that the "control" option did not work as I had anticipated...
+#       specifically, it did not remove some special characters and other stuff that looked weird to me.
+
+# control <- list(stopwords = TRUE, removePunctuation = TRUE, removeNumbers = TRUE) 
+#  tdm <- TermDocumentMatrix(clean.corpus, control) 
+#  dtm <- DocumentTermMatrix(clean.corpus, control)
+```
+
+```{r}
+# Create the Document Term Matrix 
+dtm <- DocumentTermMatrix(clean.corpus)
+inspect(dtm)
+```
+
+The regular ```inspect()``` method is not super-informative. But if we are curious about how often some words or phrases occur in our corpus, one thing we can do is pass those terms as a dictionary to the ```DocumentTermMatrix()``` method.
+
+```{r}
+
+inspect(DocumentTermMatrix(clean.corpus,list(dictionary = c("gop", "trump", "cruz"))))
+```
+
+Just to follow-up on that. In the output above we see that document 2013 has 1 occurance of the phrase "cruz" and 2 occurances of the phrase "trump". If we look at the orginial tweet text data frame we can see that:
+
+```{r}
+tweets$text[1379]
+```
+
+### Model Formation
+
+```{r}
+# Set up training and testing data using a standard 80/20 split of trainign and testing data
+
+raw.text.train <- tweets[1:round(.8 * nrow(tweets)),]
+raw.text.test  <- tweets[(round(.8 * nrow(tweets))+1):nrow(tweets),]
+
+clean.corpus.train <- clean.corpus[1:round(.8 * length(clean.corpus))]
+clean.corpus.test  <- clean.corpus[(round(.8 * length(clean.corpus))+1):length(clean.corpus)]
+
+clean.corpus.dtm.train <- dtm[1:round(.8 * nrow(dtm)),]
+clean.corpus.dtm.test  <- dtm[(round(.8 * nrow(dtm))+1):nrow(dtm),]
+```
+
+Here is an ad-hoc step but one that reduces the impact of infrequently used words. We limit the "bag of words" to words appearing in at least 3 of our documents. 
+
+```{r}
+# findFreqTerms finds all terms that are in 3 or more documents in our corpus.
+freq.terms <- findFreqTerms(clean.corpus.dtm.train, 3)
+clean.corpus.dtm.freq.train <- DocumentTermMatrix(clean.corpus.train, list(dictionary = freq.terms))
+clean.corpus.dtm.freq.test  <- DocumentTermMatrix(clean.corpus.test, list(dictionary = freq.terms))
+
+```
+
+This routine changes the elements of the DocumentTermMatrix from word counts to presence/absence. [Here are some good open source notes on NLP](http://spark-public.s3.amazonaws.com/nlp/slides/naivebayes.pdf) from a Stanford course. They include some discussion of the binarized (boolean feature) Naive Bayes algorithm. 
+
+```{r}
+convert_counts <- function(x) {
+    x <- ifelse(x > 0, 1, 0)
+    x <- factor(x, levels = c(0, 1), labels = c("No", "Yes"))
+    return(x)
+}
+
+clean.corpus.dtm.freq.train <- apply(clean.corpus.dtm.freq.train, MARGIN = 2, convert_counts)
+clean.corpus.dtm.freq.test  <- apply(clean.corpus.dtm.freq.test, MARGIN = 2, convert_counts)
+```
+
+Since Naive Bayes evaluates products of probabilities, we need some way of assigning non-zero probabilities to words which do not occur in the sample. We use Laplace 1 smoothing to this end.
+
+```{r}
+# Train the classifier
+# THIS TAKES A WHILE TO RUN IN THE CLOUD ENVIRONMENT!!
+#  
+text.classifier <- naiveBayes(clean.corpus.dtm.freq.train, raw.text.train$sentiment,laplace=1)
+text.pred <- predict(text.classifier, clean.corpus.dtm.freq.test, type=c("class"))
+
+confusionMatrix(text.pred,raw.text.test$sentiment)
+
+```
+
+The prediction for this model is not great...but we also didn't really try very hard. If we were really interested in generating the best text classifier there are lots of things we could do like scale features, do some more advanced feature selection, experiment with different models, etc. 
+
+
