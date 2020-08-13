@@ -1,0 +1,116 @@
+---
+title: "Twitter-Scraping"
+author: "aaron mamula"
+date: "8/13/2020"
+output: html_document
+---
+
+```{r}
+library(rtweet) # for harvesting tweets
+library(tm) # for text mining
+library(dplyr) 
+library(tidyr)
+library(data.table)
+library(ggplot2)
+library(ggthemes)
+#library(e1071) # has the naiveBayes algorithm
+#library(caret) # good ML package, I like the confusionMatrix() function
+library(here)
+
+```
+
+## Some Twitter Data Collection
+
+There is an R Package called [rtweet](https://rtweet.info/) that interfaces with Twitter's API and allows users to harvest Twitter Data in R. I've used it a few times and found it pretty easy to set-up and work with. I lost interest in it mainly because Twitter's API limits data collection to the most recent 10 days or so. I'm sure there is a way to access archived data but I have not yet found a research question requiring tweets that really speaks to me.
+
+I'm providing a pretty bare bones example here because I think some of you might be very interested in Science Communication or Public Relations type things that might be effectivly informed by use of Twitter data.
+
+In order to use the ```rtweet``` package you must go to Twitter and register an application. That allows you to get an API key which you need in authenticate your session.
+
+```{r, eval=F}
+## load rtweet
+library(rtweet)
+creds <- read.csv(here('data/twitter_creds.csv'))
+#============================================================================
+# Authentication via Web Browser, tutorial here
+# https://rtweet.info/articles/auth.html
+
+## store api keys (these are fake example values; replace with your own keys)
+api_key <- creds$api_key
+api_secret_key <- creds$api_secret
+access_token <- creds$access_token 
+access_secret <- creds$access_token_secret
+
+
+token <- create_token(
+  app = "mamultron",
+  consumer_key = api_key,
+  consumer_secret = api_secret_key,
+  access_token = access_token,
+  access_secret = access_secret)
+
+# example of the option to authenticate via web browser:
+#token <- create_token(
+#  app = "mamulatron",
+#  consumer_key = api_key,
+#  consumer_secret = api_secret_key)
+
+## view token (you should see the correct app name)
+token
+```
+
+```{r include=F}
+# if the direct twitter connection doesn't work, do it this way.
+#rt <- read.csv('noaa_habitat_tweets.csv')
+```
+
+```{r}
+t <- Sys.time()
+## search for some tweets referencing the @NOAA Habitat office.
+rt <- search_tweets(
+  "@NOAAHabitat",n=10,include_rts = FALSE,retryonratelimit=F)
+#=========================================================
+Sys.time() -t
+
+head(rt)
+```
+
+As you can see, the ```search_tweets()``` methods returns A LOT of information (90 different fields) in the form of a data frame. Something interesting but not terribly complex we can look at to get a feel for what manner of data we have is the screen name and text of each tweet:
+
+
+```{r}
+rt %>% dplyr::select(screen_name,text)
+```
+
+```{r}
+# look at the popular hashtags used by people mentioning NOAA Fisheries
+noaa.fish <- search_tweets(
+  "@NOAAFisheries",n=100,include_rts = FALSE,retryonratelimit=F)
+ht <- noaa.fish %>% dplyr::select(created_at,screen_name,hashtags)
+
+# hashtags are stored in a list tidyr has an answer for that
+ht <- unnest(ht,cols=c(hashtags))
+
+# probably too many to visualize so maybe just look at the top 20
+top.20 <- ht %>% filter(is.na(hashtags)==F) %>% 
+             group_by(hashtags) %>% summarise(count=n()) %>% 
+               arrange(-count) %>% filter(row_number() < 21) %>% 
+                 arrange(count) %>% mutate(hashtags=factor(hashtags,levels=hashtags))
+```
+
+```{r include=F}
+# get the data from the chunks above because I'm not running the twitter mining stuff for real
+#top.20 <- read.csv('noaa_fisheries_tweets.csv') %>%
+#              arrange(count) %>% mutate(hashtags=factor(hashtags,levels=hashtags))
+
+```
+
+```{r}
+
+ggplot(top.20,aes(x=hashtags,y=count)) + geom_bar(stat='identity') + 
+  coord_flip() + theme_fivethirtyeight() + 
+    ggtitle(label="Popular hashtags in tweets about NOAA Fisheries",
+            subtitle="hashtag use last 10 days") +
+     theme(plot.title = element_text(size = 14, face = "bold"),
+           plot.subtitle = element_text(face = "italic"))
+```
