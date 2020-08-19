@@ -1,0 +1,287 @@
+---
+title: "Text-Mining-with-Supreme-Court-Opinions"
+author: "aaron mamula"
+date: "8/17/2020"
+output: html_document
+---
+
+# {.tabset .tabset-fade .tabset-pills}
+
+## Problem Statement
+
+Here is a workbook to parse out Supreme Court Opinions from the 2019 Session. In this workbook I'm going to do something conceptually simple but practically complicated: 
+
+Create a data frame of the unique words (and the number of occurrances of each) Supreme Court opinions written by Cheif Justice John Roberts for a sample of cases from 2019. As an additional flourish, I'm also going to organize the text according to whether it came from a majority opinion or a dissenting opinion.
+
+## Packages and Dependencies {.tabset}
+
+### Packages
+
+```{r}
+library(tm)
+library(tidytext)
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(here)
+```
+
+### Data
+
+This excercise relies on a number of Supreme Court case files. I downloaded these in .pdf form from:
+
+https://www.supremecourt.gov/opinions/slipopinion/19
+
+This .pdf files are saved to the ```data``` directory in this project with the following file names:
+
+```{r}
+# list of cases that I have .pdf files for
+case.list <- c('slip-2019-18-9526_9okb.pdf',
+           'slip-2019-19-715_febh.pdf',
+           'slip-2019-19-635_07jq.pdf',
+           'slip-2019-19-267_1an2.pdf',
+           'slip-2019-19-431_5i36.pdf',
+           'slip-2019-19-465_i425.pdf',
+           'slip-2019-19-46_8n59.pdf',
+           'slip-2019-18-1195_g314.pdf')
+
+```
+
+
+### Functions
+
+The data wrangling steps for this exercise are pretty involved. For this reason I have moved a lot of the data wrangling work to a file called ```SLIP-2019-Analysis-Functions.R``` The following code chunk will make these functions available in our current markdown doc.
+
+```{r}
+source(here('R/SLIP-2019-Analysis-Functions.R'))
+
+```
+
+I have provided pretty extensive comments on the functions inside ```SLIP-2019-Analysis-Functions.R``` but I will summarise the main convenience functions here.
+
+First, I wrote a function called ```get.markers()```. This function takes a pdf document (a Supreme Court case file) and searches it for the following information:
+
+1. who wrote the majority opinion
+2. what page of the document the majority opinion starts on
+3. who wrote each of the separately published dissenting opinions
+4. what pages in the document the dissenting opinions begin and end on
+
+This function supports Justice-by-Justice type analysis. For example, if one wanted to compare the writings of Cheif Justice John Roberts and Justice Ruth Bader Ginsburg, one could use the ```get.markers()``` function to find the pages of each pdf file the contain the writings of each Justice...and whether those writings were majority or dissenting opinions.
+
+Second, I wrote a convenience function called ```get.case.text```. This function can be used with ```get.markers()``` to retrieve the text of a case file for a particular case.
+
+Another convenience function called ```filter.case.text()``` works with ```get.markers()``` and ```get.case.text()``` to filter the case text by page numbers. 
+
+The function ```tokenize.case.text()``` takes the text from an opinion and organizes it as a collection of words in a data frame object.
+
+The function ```justice.opinions()``` does a lot of the heavy lifiting in the illustration. The ```justice.opinions()``` function accepts the following inputs:
+
+1. markers
+2. justice
+3. type
+
+This function works with the output from ```get.markers()``` and returns a single data frame with all of the majority or dissenting opinions for a particular Justice. The function works as follows:
+
+1. accepts the input ```markers``` which should be a data frame containing the starting page and ending page for each opinion in each case for each Justice.
+
+2. for each justice-case-opinion combination, the function calls ```filter.case.text()``` to get the text of the opinion.
+
+3. It then takes the result of this call to ```filter.case.text()``` and feeds it to the function ```tokenize.case.text()``` which returns a data frame with all the unique words from the text.
+
+## Cheif Justice Roberts Word Count {.tabset}
+
+### Get Markers
+
+First, I use the ```get.markers()``` function from ```SLIP-2019-Analysis-Functions.R``` to get a dataframe of all the locations of majority and dissenting opinions for each Justice.
+
+```{r}
+# use the get.markers() function to put the markers together
+  markers <- data.frame(rbindlist(lapply(case.list,get.markers)))
+markers
+```
+
+### Get 1 Opinion
+
+#### Step 1: Read in the case files and find the stuff I want
+
+With the ```markers``` data frame, I can use the ```get.case()``` function to get majority and dissenting opinions for each Justice.
+
+```{r}
+CJR.cases <- markers[markers$author=="John Roberts",]
+CJR.cases
+```
+
+#### Step 2: Get the full text of the case file
+
+As an illustration I'm going to do this for the first of Cheif Justice John Robert's dissenting opinions. First, I use the ```get.case.text()``` function (recall that this is a function that I wrote and stored in ```SLIP-2019-Analysis-Functions.R```). This method will return ALL of the text from the relevant case file (in this case, the pdf ```slip-2019-18-9526_9okb.pdf```). 
+
+The resulting object ```case.text``` is a character vector with 86 items. The pdf in ```slip-2019-18-9526_9okb.pdf``` has 86 pages. Each page of this pdf is stored as an element of the character vector ```case.text``` below. To illustrate note that ```case.text``` has 86 elements and the 1st of those elements is a large blog of text that is being stored as a single character string: 
+
+```{r}
+case.text <- get.case.text(case=CJR.cases$case[1])
+str(case.text)
+```
+
+```{r}
+case.text[1]
+```
+
+```{r}
+length(case.text[1])
+```
+
+#### Step 3: Filter the text for just the dissenting opinion of John Roberts
+
+To reiterate, ```case.text``` has ALL of the text for a case where Cheif Justice John Roberts wrote a dissenting opinion. I want just the text associated with that dissenting opinion. I can get that text by using the result of my earlier call to the ```get.markers()``` function. 
+
+```{r}
+opinion.text <- case.text[CJR.cases$start[1]:CJR.cases$end[1]]
+```
+
+If we now examine the object ```opinion.text``` we can see that it is a character vector with 37 elements. At the risk of being annoyingly repetitive, the original full case text had 86 page. The dissenting opinion for this case was written by John Roberts and appears on pages 46 - 82 in the document. The object ```opinion.text``` has 37 elements corresponding to the 37 pages of dissenting opinion written by Chief Justice John Roberts.
+
+```{r}
+str(opinion.text)
+```
+```{r}
+opinion.text[1]
+```
+
+#### Step 4: Tokenize the text
+
+I now have the text that I want but it's not in a very nice format. It's just a huge blob of text. I can split this blob of text into lines because the document contains a special character line break (\n). If I split the text using this character I get a list object where each page is a list item and each list item is character vector containing as many elements as there were lines of text on that page. 
+
+```{r}
+# now we are going to split the blob of text into lines using the "\n" line break character
+opinion.text <- str_split(opinion.text,"[\n]")
+class(opinion.text)
+length(opinion.text)
+```
+
+```{r}
+str(opinion.text[1])
+opinion.text[1]
+```
+
+Since each of these list items is a character vector, I can organize these into a data frame (which I generally find easier to work with than lists)
+
+```{r}
+# now coerce this list object to a data frame where each row is a line from the original text
+opinion.df <- data.frame(rbindlist(lapply(opinion.text,function(x){data.frame(text=x)})))
+str(opinion.df)
+```
+
+Finally, I can use the ```unnest_tokens``` method from the ```tidytext``` package to convert these lines of text from the document into words.
+
+```{r}
+# now with each row as a line, I'm going to split each line into a "token"
+opinion.df <- opinion.df %>% 
+         unnest_tokens(word, text) %>%
+          mutate(case=CJR.cases$case[1], opinion=CJR.cases$opinion[1],justice=CJR.cases$author[1])
+```
+
+Let's pause here to evaluate what we have:
+
+```{r}
+print.data.frame(opinion.df %>% filter(row_number() < 10))
+```
+
+This is a data frame where each row is a word that appears in the dissent to the majority opinion of the Supreme Court in the case of McGirt v. Oklahoma. The dissent was written by Cheif Justice John Roberts.
+
+
+### Get All Opinions
+
+In the last section I created a data frame of words from a single Supreme Court opinion. Here, I'm going to do essentially the same thing...but I'm going to do it for ALL of dissenting opinions from Cheif Justice John Roberts that we have in the ```CJR.cases``` data frame. I'm also going to get ALL of the majority opinions written by Cheif Justice John Roberts.  
+
+Since this is a more involved process, I have wrapped it in a function that I put inside the ```SLIP-2019-Analysis-Functions.R``` file.
+
+```{r}
+CJR.dissenting.opinions <- justice.opinions(markers=markers,justice="John Roberts",type='dissent')
+```
+
+The function ```justice.opinions()``` that I wrote creates a data frame for each opinion. Each of these data frames contains all of the unique words appearing in the text of the opinion. Each data frame also includes some identifying information: (i) the case file name, (ii) the justice who wrote the opinion, and (iii) and whether it was a majority or dissenting opinion. 
+
+One additional thing to note, the output from my ```justice.opinions()``` function is a list of data frames...so there is one last step to coerce this info to a single data frame:
+
+```{r}
+CJR.dissenting.opinions <- data.frame(rbindlist(CJR.dissenting.opinions))
+str(CJR.dissenting.opinions)
+```
+
+By changing a few inputs in the function call I can get the tokenized versions of Cheif Justice Robert's majority opinions as well:
+
+```{r}
+CJR.majority.opinions <- data.frame(rbindlist(justice.opinions(markers=markers,justice="John Roberts",
+                                                               type="majority")))
+str(CJR.majority.opinions)
+```
+
+### Do Word Counts
+
+I don't know a lot about this kind of stuff but it seems that people usually remove stop words (a, an, and, etc.) before doing text-based analysis in order to avoid the noise that would be introduced by these common words.
+
+The tidytext way to remove stopwords is like this:
+
+```{r}
+data(stop_words)
+CJR.dissenting.opinions <- CJR.dissenting.opinions %>%
+  anti_join(stop_words)
+CJR.majority.opinions <- CJR.majority.opinions %>%
+   anti_join(stop_words)
+```
+
+```{r}
+word.count.dissent <- CJR.dissenting.opinions %>%
+  count(word, sort = TRUE) %>% mutate(opinion='dissent')
+
+word.count.majority <- CJR.majority.opinions %>%
+  count(word,sort=TRUE) %>% mutate(opinion='majority')
+```
+
+### Make a plot
+
+```{r}
+top.26.words <- rbind(word.count.dissent,word.count.majority) %>% 
+                  group_by(opinion) %>% filter(row_number()<26)
+
+ggplot(top.26.words,aes(x=word,y=n)) + geom_bar(stat='identity') + coord_flip() + facet_wrap(~opinion)
+```
+## Discussion
+
+The purpose of this exercise was not to illustrate a really methodologically awesome analysis of Supreme Court text. It was to illustrate how to prepare data for a really methodologically awesome analysis. 
+
+### Summary
+
+A high-level summary of the steps:
+
+1. Prepare the raw data: go to [this website](https://www.supremecourt.gov/opinions/slipopinion/19), download as many of the case .pdf files as you want and save them inside of an R Studio project
+
+2. Develop an identification algorithm. In my case I wanted to separately identify the text for the majority and dissenting opinions of each case. This was made relatively simple by 2 important facts:
+
+A. almost all of the case files have the same layout: the first several pages are the "Syllabus", the majority opinion always follows the "Syllabus", the dissenting opinions (there can be more than one) follow the majority opinion.
+
+B. the language identifying the majority opinion is always the same: "CHEIF JUSTICE ROBERTS/JUSTICE ALITO/JUSTICE GINSBURG delivered the opinion of the court"
+
+C. for dissenting opinions the following identifier appears as a header on every page: "ROBERTS, C. J., dissenting" or "GINSBURG, J., dissenting" or "ALITO, J., dissenting"...you get the idea.
+
+3. Apply the identification algorithm to "mark" the text: because the majority and dissenting opinions are identifiable by common text strings, I can use a regular expression search to search each case text for the start and end of the majority opinion and each dissenting opinion. This step has two sub-tasks
+
+A. read the text from a case file into R using the ```pdf_text()``` method from the ```pdftools``` package.
+B. search the text for the identifying text strings and record the page on which each text string is found.
+C. repeat A-B for all pdf files 
+
+4. Using the "markers" generated from Step 3: for a particular justice, get the text from all cases in which that justice wrote either a majority or dissenting opinion. 
+
+### Caveats
+
+1. I didn't even try to mess with concurring opinions. Honestly, identifying the majority opinion in each case was kind of easy because it says, "So-and-So delivered the opinion of the Court" and that exact phrasing only appears before the start of the majority opinion. Also, it was not too difficult to identify the dissenting opinions. In a few cases there were separately writting "concurring" opinions. I haven't yet figured out a good way to identify these through a regular expression search so I just left them alone.
+
+2. The actual analysis I included here is pretty uninteresting. One reason for that is that I only downloaded 9 case files and Cheif Justice Roberts only wrote dissenting opinions on 2 of these. One of these opinions concerned a Native American Tribe in Oklahoma, so "Oklahoma" was one of the most frequently used words in the text of Cheif Justice John Robert's dissenting opinions. I'm guessing that if I downloaded more of the available case text pdfs, we'd get more words towards the top of our list that are actually important features of John Robert's writing style...and fewer proper nouns like Oklahoma.
+
+3. I didn't really do anything interesting after tokenizing the text. One thing to notice from the bar graph is that "president" and "president's" appear separately. Also "land" and "lands" appear separately on the list. There is a [technique called stemming](https://en.wikipedia.org/wiki/Stemming) that one could probably use to get a better/more informative list of important words. I don't really know enough about the field of linguistic analysis to try and include this in my example. 
+
+
+## Resources
+
+[The R bookdown of the ```tidytext``` package](https://www.tidytextmining.com/tidytext.html) is pretty good.
+

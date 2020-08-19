@@ -148,7 +148,7 @@ inspect(DocumentTermMatrix(clean.corpus,list(dictionary = c("gop", "trump", "cru
 Just to follow-up on that. In the output above we see that document 2013 has 1 occurance of the phrase "cruz" and 2 occurances of the phrase "trump". If we look at the orginial tweet text data frame we can see that:
 
 ```{r}
-tweets$text[1379]
+tweets$text[2013]
 ```
 
 ### Model Formation

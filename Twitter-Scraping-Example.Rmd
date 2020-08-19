@@ -5,6 +5,12 @@ date: "8/13/2020"
 output: html_document
 ---
 
+# {.tabset .tabset-fade .tabset-pills}
+
+## Packages and Dependencies {.tabset}
+
+### Packages
+
 ```{r}
 library(rtweet) # for harvesting tweets
 library(tm) # for text mining
@@ -19,13 +25,27 @@ library(here)
 
 ```
 
-## Some Twitter Data Collection
+### Dependencies
+
+This examples requires a bit of set up. This set-up is not conceptually difficult but getting everything buttoned up just so can require a bit of focus. Basically, you need to create a developer account with Twitter in order to access data through their public API. Once you have created a developer account and registered an app, you will get 
+1. an API key 
+2. an API secret
+3. an access token
+4. an access token secret
+
+you will need these things in order to establish a connection between your R instance and Twitter's public API.
+
+[Michael Kearney has a really nice set of slides illustrating the use of the rtweet package](https://mkearney.github.io/nicar_tworkshop/#1)
+
+## Basic Twitter Data Collection
 
 There is an R Package called [rtweet](https://rtweet.info/) that interfaces with Twitter's API and allows users to harvest Twitter Data in R. I've used it a few times and found it pretty easy to set-up and work with. I lost interest in it mainly because Twitter's API limits data collection to the most recent 10 days or so. I'm sure there is a way to access archived data but I have not yet found a research question requiring tweets that really speaks to me.
 
 I'm providing a pretty bare bones example here because I think some of you might be very interested in Science Communication or Public Relations type things that might be effectivly informed by use of Twitter data.
 
 In order to use the ```rtweet``` package you must go to Twitter and register an application. That allows you to get an API key which you need in authenticate your session.
+
+IT IS VERY IMPORTANT FOR YOU TO KNOW THAT THIS PART WILL NOT BE REPRODUCABLE FOR YOU UNLESS YOU SUPPLY YOUR OWN TWITTER AUTHENTICATION CREDENTIALS.
 
 ```{r, eval=F}
 ## load rtweet
@@ -59,16 +79,13 @@ token <- create_token(
 token
 ```
 
-```{r include=F}
-# if the direct twitter connection doesn't work, do it this way.
-#rt <- read.csv('noaa_habitat_tweets.csv')
-```
+Using the ```search_tweets()``` method we can collect a bunch of tweets that mention the NOAA twitter account:
 
 ```{r}
 t <- Sys.time()
-## search for some tweets referencing the @NOAA Habitat office.
+## search for some tweets referencing the @NOAA account.
 rt <- search_tweets(
-  "@NOAAHabitat",n=10,include_rts = FALSE,retryonratelimit=F)
+  "@NOAA",n=10,include_rts = FALSE,retryonratelimit=F)
 #=========================================================
 Sys.time() -t
 
@@ -81,6 +98,8 @@ As you can see, the ```search_tweets()``` methods returns A LOT of information (
 ```{r}
 rt %>% dplyr::select(screen_name,text)
 ```
+
+## A NOAA Fisheries Example
 
 ```{r}
 # look at the popular hashtags used by people mentioning NOAA Fisheries
@@ -98,12 +117,6 @@ top.20 <- ht %>% filter(is.na(hashtags)==F) %>%
                  arrange(count) %>% mutate(hashtags=factor(hashtags,levels=hashtags))
 ```
 
-```{r include=F}
-# get the data from the chunks above because I'm not running the twitter mining stuff for real
-#top.20 <- read.csv('noaa_fisheries_tweets.csv') %>%
-#              arrange(count) %>% mutate(hashtags=factor(hashtags,levels=hashtags))
-
-```
 
 ```{r}
 
