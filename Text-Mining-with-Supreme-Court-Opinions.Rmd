@@ -7,11 +7,47 @@ output: html_document
 
 # {.tabset .tabset-fade .tabset-pills}
 
-## Problem Statement
+## Intro and Background
+
+### Problem Statement
 
 Here is a workbook to parse out Supreme Court Opinions from the 2019 Session. In this workbook I'm going to do something conceptually simple but practically complicated: 
 
 Create a data frame of the unique words (and the number of occurrances of each) Supreme Court opinions written by Cheif Justice John Roberts for a sample of cases from 2019. As an additional flourish, I'm also going to organize the text according to whether it came from a majority opinion or a dissenting opinion.
+
+### Approach
+
+This illustration involves the following steps:
+
+1. download .pdf versions of Supreme Court Cases from 2019 from [here](https://www.supremecourt.gov/opinions/slipopinion/19)
+
+2. use ```pdf_text()``` from the ```pdftools``` package to read the text of these pdf files into R.
+
+3. use a regular expression search to comb through this text and identify the text associated with the majority opinion and all dissenting opinions for each case.
+
+4. using some specialty functions (ones that I wrote) aggregate all the text from majority and dissenting opinions written by Cheif Justice John Roberts. 
+
+5. split that text into words and do a word count.
+
+### Text mining algorithm
+
+The manual, uninteresting, but also unavoidable part of this is that we have to actually look at the pdf files of the cases and see if we can identify unique features of their organization that will allow us to efficiently extract the info we want.
+
+In this example I use a highly simplified and imperfect algorithm based on my observation of 2 important facts:
+
+1. the text of the majority opinion is almost always identifiable by the the phrase "JUSTICE so-and-so delivered the opinion of the Court"
+
+2. the text of dissenting opinions always has the following identifying phrase as a header on each page, "THOMAS, J., dissenting" or "BREYER, J., dissenting" or "SOTOMAYOR, J., dissenting" or....
+
+The highly over-simplified text mining algorithm that I use for each text is:
+
+1. find the regular expression "JUSTICE ___ delivered the opinion of the Court" and mark the page on which this phrase occurs.
+
+2. Next, find all pages that contain any of the indentifying phrases "THOMAS, J., dissenting", "BREYER, J., dissenting", "GINSBURG, J., dissenting", etc, etc.
+
+3. By collecting these page numbers I am able to create a data frame for each document that contains information on who wrote the majority opinion, what page the majority opinion begins and ends of, who wrote any dissenting opinions, and what pages those dissenting opinions begin and end on.
+
+
 
 ## Packages and Dependencies {.tabset}
 
@@ -43,7 +79,8 @@ case.list <- c('slip-2019-18-9526_9okb.pdf',
            'slip-2019-19-431_5i36.pdf',
            'slip-2019-19-465_i425.pdf',
            'slip-2019-19-46_8n59.pdf',
-           'slip-2019-18-1195_g314.pdf')
+           'slip-2019-18-1195_g314.pdf',
+           'slip-2019-19-177_b97c.pdf')
 
 ```
 
@@ -274,7 +311,7 @@ C. repeat A-B for all pdf files
 
 ### Caveats
 
-1. I didn't even try to mess with concurring opinions. Honestly, identifying the majority opinion in each case was kind of easy because it says, "So-and-So delivered the opinion of the Court" and that exact phrasing only appears before the start of the majority opinion. Also, it was not too difficult to identify the dissenting opinions. In a few cases there were separately writting "concurring" opinions. I haven't yet figured out a good way to identify these through a regular expression search so I just left them alone.
+1. I didn't even try to mess with concurring opinions. Honestly, identifying the majority opinion in each case was kind of easy because it says, "So-and-So delivered the opinion of the Court" and that exact phrasing only appears before the start of the majority opinion. Also, it was not too difficult to identify the dissenting opinions. In a few cases there were separately writting "concurring" opinions. I haven't yet figured out a good way to identify these through a regular expression search so I just left them alone. Also there were several cases where individual Justices entered their own opinions that concurred with the majority opinion in parts and dissented in other parts. These opinions can probably be collected....but they didn't find my really simple stylized framework so I ignored them for now.
 
 2. The actual analysis I included here is pretty uninteresting. One reason for that is that I only downloaded 9 case files and Cheif Justice Roberts only wrote dissenting opinions on 2 of these. One of these opinions concerned a Native American Tribe in Oklahoma, so "Oklahoma" was one of the most frequently used words in the text of Cheif Justice John Robert's dissenting opinions. I'm guessing that if I downloaded more of the available case text pdfs, we'd get more words towards the top of our list that are actually important features of John Robert's writing style...and fewer proper nouns like Oklahoma.
 

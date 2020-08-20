@@ -9,16 +9,13 @@
 # I have downloaded a handful of pdf files of Supreme Court Opinions
 # from here: https://www.supremecourt.gov/opinions/slipopinion/19
 
-# The 2 most important functions are:
+# Most of the heavy lifting is done by a single function called:
 
-# 1. get.markers()
-# 2. get.justice.opinions()
+#  get.markers()
+
 
 # The get.markers() functions reads in a Supreme Court Opinion and finds the 
 # sections of text corresponding to the majority opinion and any dissenting opinions. 
-
-# The get.justice.opinions() function takes the information in get.markers() and uses it to create a 
-# text blob for each Supreme Court Justice.
 
 # Each case opinion is organized similarly: there is a Syllabus, followed by the majority opion,
 # followed by dissenting opinions. 
@@ -45,15 +42,37 @@ library(data.table)
 #######################################################################################################
 #######################################################################################################
 #######################################################################################################
+
+#-------------------------------------------------------------------
 # global search terms
+
+# these are the terms that we are going to use to identify majority
+# and dissenting opinions in the text from the case files
+
+# for instance in the case of McGirt v. Oklahoma Justice Neil Gorsuch delivered
+# the majority opinion while Cheif Justice Roberts wrote a dissenting opinion and
+# Justice Clarence Thomas wrote another dissenting opinion. 
+
+# our algorithm is going to search the text for all of the phrases,
+# "JUSTICE ALITO delivered the opinion of the Court", "JUSTICE THOMAS delivered the opinion of the Court",
+#   "JUSTICE KAGAN delivered the opinion of the Court", etc. 
+# Once one of these terms is found, the algorithm will identify that page number and save it as an object.
+#
+# the algorithm will then search for all the dissenting terms, "ROBERTS, C. J., dissenting", 
+# "GINSBURG, J., dissenting", "THOMAS, J., dissenting", etc. etc. the algorithm will collect all the page
+# numbers where any of these search terms appear. 
+#-------------------------------------------------------------------
+
+
 majority.find <- data.frame(justice=c("Neil Gorsuch","Samuel Alito","Clarence Thomas","Elena Kagan","John Roberts",
-                                      "Ruth Bader Ginsburg"),
+                                      "Ruth Bader Ginsburg","Brett Kavanaugh"),
                             phrase=c("JUSTICE GORSUCH delivered the opinion of the Court",
                    "JUSTICE ALITO delivered the opinion of the Court",
                    "JUSTICE THOMAS delivered the opinion of the Court",
                    "JUSTICE KAGAN delivered the opinion of the Court",
                    "CHIEF JUSTICE ROBERTS delivered the opinion",
-                   "JUSTICE GINSBURG delivered the opinion of the Court"))
+                   "JUSTICE GINSBURG delivered the opinion of the Court",
+                   "JUSTICE KAVANAUGH delivered the opinion of the Court"))
 
 dissent.find <- data.frame(justice=c("John Roberts","Samuel Alito","Clarence Thomas",
                                      "Elena Kagan","Sonya Sotomayor",
@@ -73,6 +92,17 @@ dissent.find <- data.frame(justice=c("John Roberts","Samuel Alito","Clarence Tho
 ###############################################################################################
 ###############################################################################################
 ###############################################################################################
+# This function is the primary execution of our simplified algorithm. It takes in a file name,
+#  then uses the pdf_text() method to read all the text from that pdf file into the workspace.
+# the function then does an iterative regular expression search using all the search terms
+# appearing above in the global search terms section.
+
+# The function collects the page numbers where any of the search terms were found and organizes
+# them in a data frame.
+
+# The output from this function is a data frame containing the locations (page numbers) within the text
+# of the majority and dissenting opinions and which justices authored them.
+
 get.markers <- function(case){
 
 doc <- pdf_text(here(paste('data/',case,sep="")))
@@ -124,6 +154,18 @@ return(info)
 #################################################################################################
 #################################################################################################
 #################################################################################################
+# 
+#  This section contains some additional convenience functions
+#
+#################################################################################################
+#################################################################################################
+#################################################################################################
+#################################################################################################
+#################################################################################################
+#################################################################################################
+#################################################################################################
+#################################################################################################
+
 # A simple function to get text
 get.case.text <- function(case){
   path <- paste('data/',case,sep="")
@@ -173,6 +215,27 @@ tokenize.case.text <- function(case.text){
 return(df)
 }
 
+#-------------------------------------------------------------------------------------
+# this function can be used to get the text of all majority or dissenting opinions
+# for a single justice.
+
+# the function accepts the following inputs:
+#
+# 1. markers - this is the data frame output from the get.markers() function
+# 2. justice - the name of a justice (i.e. "John Roberts", "Samuel Alito", etc.). The text
+#               should match exactly to the names in the global search terms objects majority.find
+#                 dissent.find
+# 3. type - either "majority" or "dissent"
+#
+# the function uses the following convenience functions:
+
+# 1. filter.case.text(): to get the text of opinions written by the justice
+# 2. tokenize.case.text(): to parse the text of opinions and organize it as a data frame
+#                           of words
+#
+# the function produces the following output:
+# 1. a list of data frames. each data frame is a majority or dissenting opinion written by the 
+#      justice of interest. each data frame is organized as a collection of words from the text
 
 justice.opinions <- function(markers,justice,type){
   tmp <- markers %>% filter(opinion==type & author==justice)
@@ -184,7 +247,7 @@ justice.opinions <- function(markers,justice,type){
   }
 return(justice.opinion.words)  
 }
-
+#------------------------------------------------------------------------------------
 
 
 
