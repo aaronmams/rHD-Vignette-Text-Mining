@@ -65,25 +65,28 @@ library(data.table)
 
 
 majority.find <- data.frame(justice=c("Neil Gorsuch","Samuel Alito","Clarence Thomas","Elena Kagan","John Roberts",
-                                      "Ruth Bader Ginsburg","Brett Kavanaugh"),
+                                      "Ruth Bader Ginsburg","Brett Kavanaugh","Stephen Breyer","Sonya Sotomayor"),
                             phrase=c("JUSTICE GORSUCH delivered the opinion of the Court",
-                   "JUSTICE ALITO delivered the opinion of the Court",
-                   "JUSTICE THOMAS delivered the opinion of the Court",
-                   "JUSTICE KAGAN delivered the opinion of the Court",
-                   "CHIEF JUSTICE ROBERTS delivered the opinion",
-                   "JUSTICE GINSBURG delivered the opinion of the Court",
-                   "JUSTICE KAVANAUGH delivered the opinion of the Court"))
+                                     "JUSTICE ALITO delivered the opinion of the Court",
+                                      "JUSTICE THOMAS delivered the opinion of the Court",
+                                      "JUSTICE KAGAN delivered the opinion of the Court",
+                                       "CHIEF JUSTICE ROBERTS delivered the opinion",
+                                    "JUSTICE GINSBURG delivered the opinion of the Court",
+                                    "JUSTICE KAVANAUGH delivered the opinion of the Court",
+                                    "JUSTICE BREYER delivered the opinion of the Court",
+                                    "JUSTICE SOTOMAYOR delivered the opinion of the Court"))
 
-dissent.find <- data.frame(justice=c("John Roberts","Samuel Alito","Clarence Thomas",
-                                     "Elena Kagan","Sonya Sotomayor",
-                                "Ruth Bader Ginsburg","Stephen Breyer"),
-                           phrase=c("ROBERTS, C. J., dissenting",
-                  "ALITO, J., dissenting",
-                  "THOMAS, J., dissenting",
-                  "KAGAN, J., dissenting",
-                  "SOTOMAYOR, J., dissenting",
-                  "GINSBURG, J., dissenting",
-                  "BREYER, J., dissenting"))
+dissent.find <- data.frame(justice=c("Neil Gorsuch","Samuel Alito","Clarence Thomas","Elena Kagan","John Roberts",
+                                     "Ruth Bader Ginsburg","Brett Kavanaugh","Stephen Breyer","Sonya Sotomayor"),
+                           phrase=c("GORSUCH, J., dissenting",
+                                    "ALITO, J., dissenting",
+                                    "THOMAS, J., dissenting",
+                                    "KAGAN, J., dissenting",
+                                    "ROBERTS, C. J., dissenting",
+                                    "GINSBURG, J., dissenting",                  
+                                    "KAVANAUGH, J., dissenting",
+                                    "BREYER, J., dissenting",
+                                    "SOTOMAYOR, J., dissenting"))
 
 #################################################################################################
 #################################################################################################
