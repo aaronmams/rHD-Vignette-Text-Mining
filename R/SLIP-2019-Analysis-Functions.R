@@ -37,6 +37,7 @@ library(pdftools)
 library(here)
 library(tidyverse)
 library(data.table)
+library(stringr)
 
 #######################################################################################################
 #######################################################################################################
@@ -182,21 +183,6 @@ get.case.text <- function(case){
 }
 #-----------------------------------------------------------------------
 
-#------------------------------------------------------------------------
-# A function to get majority and dissenting opinions for each/any Justice
-get.justice.opinions <- function(justice,case.list){
-  # use the get.markers() function to put the markers together
-  markers <- data.frame(rbindlist(lapply(case.list,get.markers)))
-  # filter the markers data frame for the justice of interest
-  markers <- markers %>% filter(author==justice)
-  
-  justice.text <- lapply(markers$case,function(x){
-    text <- get.case.text(case=x)
-    text <- text[markers$start[markers$case==x]:markers$end[markers$case==x]]
-  })
-return(justice.text)
-}
-#---------------------------------------------------------------------------
 
 #----------------------------------------------------------------------------
 
@@ -211,7 +197,7 @@ filter.case.text <- function(case,page.range){
 # type (dissenting or majority) from a particular justice
 
 tokenize.case.text <- function(case.text){
-  case.text <- str_split(case.text,"[\n]")
+  #case.text <- str_split(case.text,"[\n]")
   
   # now coerce this list object to a data frame where each row is a line from the original text
   df <- data.frame(rbindlist(lapply(case.text,function(x){data.frame(text=x)})))

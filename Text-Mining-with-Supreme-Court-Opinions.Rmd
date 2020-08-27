@@ -226,7 +226,7 @@ print.data.frame(opinion.df %>% filter(row_number() < 10))
 This is a data frame where each row is a word that appears in the dissent to the majority opinion of the Supreme Court in the case of McGirt v. Oklahoma. The dissent was written by Cheif Justice John Roberts.
 
 
-### Get All Opinions
+### Get All Opinions for a Single Justice
 
 In the last section I created a data frame of words from a single Supreme Court opinion. Here, I'm going to do essentially the same thing...but I'm going to do it for ALL of dissenting opinions from Cheif Justice John Roberts that we have in the ```CJR.cases``` data frame. I'm also going to get ALL of the majority opinions written by Cheif Justice John Roberts.  
 
@@ -278,14 +278,39 @@ word.count.majority <- CJR.majority.opinions %>%
 ### Make a plot
 
 ```{r}
-top.26.words <- rbind(word.count.dissent,word.count.majority) %>% 
+top.25.words <- rbind(word.count.dissent,word.count.majority) %>% 
                   group_by(opinion) %>% filter(row_number()<26)
 
-ggplot(top.26.words,aes(x=word,y=n)) + geom_bar(stat='identity') + coord_flip() + facet_wrap(~opinion)
+ggplot(top.25.words,aes(x=word,y=n)) + geom_bar(stat='identity') + coord_flip() + facet_wrap(~opinion,scales='free') + 
+  ggtitle("25 Most Common Terms Appearing in Supreme Court Opinions\n Written by Chief Justice John Roberts") + 
+  xlab("Term") + ylab("Term Count") + 
+  theme_bw()
 ```
+
 ## Discussion
 
 The purpose of this exercise was not to illustrate a really methodologically awesome analysis of Supreme Court text. It was to illustrate how to prepare data for a really methodologically awesome analysis. 
+
+## Get All Opinions for All Justices
+
+```{r}
+words <- list()
+for(i in 1:nrow(markers)){
+  text <- filter.case.text(markers$case[i],page.range=c(markers$start[i],markers$end[i]))
+  text <- tokenize.case.text(text)
+  text <- text %>% mutate(case=markers$case[i],justice=markers$author[i],opinion=markers$opinion[i])
+  words[[i]] <- text
+}
+
+words <- data.frame(rbindlist(words))
+
+top.25 <- words %>% group_by(justice,word) %>% summarise(count=n()) %>%
+            arrange(justice,-count) %>% 
+              group_by(justice) %>% 
+               filter(row_number() < 26)
+ggplot(top.25,aes(x=word,y=count)) + geom_bar(stat='identity') + coord_flip() + 
+      facet_wrap(~justice)
+```
 
 ### Summary
 
