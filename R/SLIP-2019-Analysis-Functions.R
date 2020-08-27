@@ -9,10 +9,10 @@
 # I have downloaded a handful of pdf files of Supreme Court Opinions
 # from here: https://www.supremecourt.gov/opinions/slipopinion/19
 
-# Most of the heavy lifting is done by a single function called:
+# Most of the heavy lifting is done by a two functions called:
 
 #  get.markers()
-
+#  justice.opinions()
 
 # The get.markers() functions reads in a Supreme Court Opinion and finds the 
 # sections of text corresponding to the majority opinion and any dissenting opinions. 
@@ -25,6 +25,8 @@
 # case files in then parse them to find the dissenting opinions, then filter those dissenting opinions
 # for just the ones written by John Roberts.
 
+# The justice.opinions() function calls to two other functions (i) filter.case.text() and (ii) tokenize.case.text
+#  in order to get all of the words from all of the opinions for a single justice.
 
 ######################################################################################################
 ######################################################################################################
